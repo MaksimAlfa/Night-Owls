@@ -3,8 +3,10 @@
 .godot/
 
 # Ignore library files but not the gdextension file
-/bin/**
+/bin/
 !project/bin/*.gdextension
+!project/bin/windows/
+!project/bin/windows/*.dll
 
 # Ignore scons database
 .sconsign*.dblite
