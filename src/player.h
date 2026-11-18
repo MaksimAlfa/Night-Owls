@@ -1,6 +1,7 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include "godot_cpp/variant/vector2.hpp"
 #include <godot_cpp/classes/character_body2d.hpp>
 #include <godot_cpp/classes/input.hpp>
 
@@ -10,9 +11,22 @@ class Player : public CharacterBody2D {
     GDCLASS(Player, CharacterBody2D)
 
 private:
-    double speed = 300.0;
-    double jump_velocity = -450.0;
-    double gravity = 980.0;
+    double speed = 500.0;
+    double jump_velocity = -550.0;
+    double gravity = 1200.0;
+
+    double dash_speed = speed * 2;
+    double dash_timer = 0.0;
+    double dash_duration = 0.15; //длительность рывка
+
+    double dash_cooldown = 0.1;
+    double dash_cooldown_timer = 0.0;
+    bool can_dash = true;
+
+    Vector2 facing_direction = Vector2(1.0, 0.0); // Куда смотрит игрок (изначально вправо)
+    double dash_direction = 1.0; // Куда смотрит игрок во время старта рывка
+
+    void start_dash(const Vector2 &dir);
 
 protected:
     static void _bind_methods();
@@ -28,6 +42,12 @@ public:
 
     void set_jump_velocity(const double p_jump_velocity);
     double get_jump_velocity() const;
+
+    void set_dash_cooldown(const double p_dash_cooldown);
+    double get_dash_cooldown() const;
+
+    void set_gravity(const double p_gravity);
+    double get_gravity() const;
 };
 
 } // namespace godot
