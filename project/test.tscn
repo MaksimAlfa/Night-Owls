@@ -20,8 +20,7 @@ size = Vector2(30, 124)
 
 [node name="Node2D" type="Node2D" unique_id=466935594]
 
-[node name="Player" type="Player" parent="." unique_id=266343344]
-dash_cooldown = 0.15
+[node name="Player" type="CharacterBody2D" parent="." unique_id=570252625]
 position = Vector2(208, 901)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=1750169834]
@@ -48,7 +47,7 @@ offset_bottom = 10.0
 color = Color(0, 1, 1, 1)
 metadata/_edit_use_anchors_ = true
 
-[node name="Carryable" type="Carryable" parent="." unique_id=500536596]
+[node name="Carryable" type="RigidBody2D" parent="." unique_id=1168847781]
 visibility_layer = 16
 position = Vector2(397, 952)
 
