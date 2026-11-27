@@ -1,0 +1,16 @@
+[gd_scene format=3 uid="uid://cfvp3om3vjjx6"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_f1f6b"]
+
+[node name="Node2D" type="Node2D" unique_id=699672629]
+
+[node name="Player" type="Player" parent="." unique_id=1055502391]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Player" unique_id=364808383]
+shape = SubResource("RectangleShape2D_f1f6b")
+
+[node name="ColorRect" type="ColorRect" parent="Player/CollisionShape2D" unique_id=1808048286]
+offset_left = -10.0
+offset_top = -9.0
+offset_right = 10.0
+offset_bottom = 10.0

@@ -15,6 +15,9 @@ size = Vector2(300, 30)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_wpumm"]
 size = Vector2(20, 234)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_c8bmw"]
+size = Vector2(30, 124)
+
 [node name="Node2D" type="Node2D" unique_id=466935594]
 
 [node name="Player" type="Player" parent="." unique_id=266343344]
@@ -47,27 +50,41 @@ metadata/_edit_use_anchors_ = true
 
 [node name="Carryable" type="Carryable" parent="." unique_id=500536596]
 visibility_layer = 16
-position = Vector2(728, 875)
+position = Vector2(397, 952)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Carryable" unique_id=1059287248]
+position = Vector2(-4, 0)
 shape = SubResource("RectangleShape2D_3v640")
 
 [node name="ColorRect" type="ColorRect" parent="Carryable" unique_id=1817078228]
+offset_left = -63.0
+offset_top = -47.0
+offset_right = 54.0
+offset_bottom = 48.0
+
+[node name="Carryable2" type="Carryable" parent="." unique_id=787297615]
+visibility_layer = 16
+position = Vector2(923, 811)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Carryable2" unique_id=1413832681]
+shape = SubResource("RectangleShape2D_3v640")
+
+[node name="ColorRect" type="ColorRect" parent="Carryable2" unique_id=16204958]
 offset_left = -57.0
 offset_top = -47.0
 offset_right = 60.0
 offset_bottom = 48.0
 
 [node name="StaticBody2D2" type="StaticBody2D" parent="." unique_id=681349679]
-position = Vector2(1107, 888)
+position = Vector2(600, 850)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D2" unique_id=1593965163]
 shape = SubResource("RectangleShape2D_3dc7r")
 
 [node name="ColorRect" type="ColorRect" parent="StaticBody2D2/CollisionShape2D" unique_id=229677750]
-offset_left = -149.0
+offset_left = -150.0
 offset_top = -14.0
-offset_right = 151.0
+offset_right = 150.0
 offset_bottom = 14.0
 
 [node name="StaticBody2D3" type="StaticBody2D" parent="." unique_id=1047304064]
@@ -82,3 +99,20 @@ offset_left = -10.0
 offset_top = -115.0
 offset_right = 11.0
 offset_bottom = 119.0
+
+[node name="LevelExit" type="LevelExit" parent="." unique_id=801320465]
+next_scene_path = "uid://cfvp3om3vjjx6"
+position = Vector2(1882, 995)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LevelExit" unique_id=1563138019]
+shape = SubResource("RectangleShape2D_c8bmw")
+
+[node name="ColorRect" type="ColorRect" parent="LevelExit/CollisionShape2D" unique_id=1365312682]
+offset_left = -17.0
+offset_top = -62.0
+offset_right = 15.0
+offset_bottom = 63.0
+color = Color(1, 0.11372549, 1, 1)
+
+[node name="HookPoint" type="HookPoint" parent="." unique_id=270475768]
+position = Vector2(1120, 634)

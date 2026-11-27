@@ -21,15 +21,15 @@ void Carryable::_ready() {
         return;
     }
 
+    add_to_group("boxes");
+
     // Коробка находится на 3-м слое (бит 4), но сталкивается только с 1-м слоем (землей/стенами)
     set_collision_layer(4); // 3-й слой (2^2 = 4)
-    set_collision_mask(1);  // 1-й слой (земля)
+    set_collision_mask(5);  // 1-й слой (земля)
     set_safe_margin(1.0);
 
     CollisionShape2D *col = get_node<CollisionShape2D>("CollisionShape2D");
     if (col != nullptr) {
-        col->set_one_way_collision(true);
-        col->set_one_way_collision_margin(8.0);
 
         Ref<RectangleShape2D> rect = col->get_shape();
         if (rect.is_valid()){
@@ -76,7 +76,7 @@ void Carryable::drop(const Vector2 &p_velocity) {
     is_carried = false;
     // Возвращаем коллизии и задаем стартовую скорость
     set_collision_layer(4);
-    set_collision_mask(1);
+    set_collision_mask(5);
     set_velocity(p_velocity);
 }
 

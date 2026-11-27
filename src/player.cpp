@@ -8,6 +8,9 @@
 #include <godot_cpp/classes/world2d.hpp>
 #include <godot_cpp/classes/physics_direct_space_state2d.hpp>
 #include <godot_cpp/classes/physics_ray_query_parameters2d.hpp>
+#include <godot_cpp/classes/physics_shape_query_parameters2d.hpp>
+#include <godot_cpp/classes/scene_tree.hpp>
+
 
 
 using namespace godot;
@@ -48,6 +51,21 @@ void Player::_ready() {
     // Игрок находится на 2-м слое, а сталкивается с 1-м (пол) и 3-м (коробки) слоями:
     set_collision_layer(2);
     set_collision_mask(5); // 1 (пол) + 4 (коробки) = 5
+    set_collision_mask_value(3, true);
+
+    Camera2D *camera = memnew(Camera2D);
+    camera->set_enabled(true);
+    // Включаем плавное отставание/догоняние камеры (Position Smoothing)
+    camera->set_position_smoothing_enabled(true);
+    camera->set_position_smoothing_speed(15.0); // Чем меньше число, тем плавнее камера плывет за игроком
+    add_child(camera);
+
+    rope_line = memnew(Line2D);
+    rope_line->set_width(3.0);
+    rope_line->set_default_color(Color(0.9, 0.8, 0.5, 1.0)); // Цвет веревки
+    rope_line->set_visible(false);
+    add_child(rope_line);
+
 
     CollisionShape2D *player_col = get_node<CollisionShape2D>("CollisionShape2D");
 
@@ -59,22 +77,11 @@ void Player::_ready() {
     }
     }
 
-    body_check_area = memnew(Area2D);
-    body_check_area->set_position(Vector2(0.0, 0.0));
-    body_check_area->set_collision_layer(0);
-    body_check_area->set_collision_mask(4); //4 слой - коробки, смотрим только их
-    add_child(body_check_area);
-
     CollisionShape2D *body_col = memnew(CollisionShape2D);
     body_col->set_position(Vector2(0.0, 10.0));
 
     Ref<RectangleShape2D> body_rect;
     body_rect.instantiate();
-
-    body_rect->set_size(Vector2(player_size.x, player_size.y + 20));
-    body_col->set_shape(body_rect);
-    body_check_area->add_child(body_col);
-
 
     // 1. Создаем зону подбора GrabArea и крепим её к Player
     grab_area = memnew(Area2D);
@@ -109,6 +116,62 @@ void Player::_physics_process(double delta) {
 
     Input *input = Input::get_singleton();
 
+    // 1. Нажатие / отпускание кнопки крюка (действие "hook")
+    if (input->is_action_just_pressed("hook")) {
+        try_attach_hook();
+    }
+    if (input->is_action_just_released("hook") && active_hook != nullptr) {
+        release_hook();
+    }
+
+    // 2. Если зацепились за крюк — физика движения по радиусу (маятник)
+    if (active_hook != nullptr) {
+
+        if (held_box != nullptr && hold_point != nullptr) {
+            held_box->set_global_position(hold_point->get_global_position());
+        }
+        // Гравитация продолжает тянуть вниз
+        velocity.y += gravity * delta;
+
+        // Раскачивание кнопками влево/вправо
+        double swing_dir = input->get_axis("move_left", "move_right");
+        velocity.x += swing_dir * swing_force * delta;
+
+        // Изменение длины веревки кнопками вверх/вниз (опционально, можно закомментировать)
+        double climb_dir = input->get_axis("move_up", "move_down");
+        rope_length = Math::clamp(rope_length + climb_dir * 150.0 * delta, 30.0, active_hook->get_hook_radius());
+
+        // Вектор от точки крюка к игроку
+        Vector2 hook_pos = active_hook->get_global_position();
+        Vector2 to_player = get_global_position() - hook_pos;
+        double current_dist = to_player.length();
+
+        // Если веревка натянулась (расстояние >= rope_length) — ограничиваем движение радиусом!
+        if (current_dist >= rope_length && current_dist > 0.0) {
+            Vector2 radial_dir = to_player / current_dist; // Единичный вектор от крюка к игроку
+
+            // Возвращаем игрока точно на окружность радиуса rope_length
+            set_global_position(hook_pos + radial_dir * rope_length);
+
+            // Убираем составляющую скорости, направленную от центра наружу (скалярное произведение)
+            double radial_velocity = velocity.dot(radial_dir);
+            if (radial_velocity > 0.0) {
+                velocity -= radial_dir * radial_velocity;
+            }
+        }
+
+        // Обновляем координаты концов веревки (в локальных координатах Player)
+        if (rope_line != nullptr) {
+            rope_line->clear_points();
+            rope_line->add_point(Vector2(0.0, 0.0));
+            rope_line->add_point(to_local(hook_pos));
+        }
+
+        set_velocity(velocity);
+        move_and_slide();
+        return; // Пока висим на крюке, обычный бег и рывок не выполняем
+    }
+
     Vector2 input_dir = input->get_vector("move_left", "move_right", "move_up", "move_down");
     if (input_dir.length_squared() > 0.0){
         facing_direction = input_dir;
@@ -139,13 +202,27 @@ void Player::_physics_process(double delta) {
             velocity.y = jump_velocity;
         }
 
-        // 3. Движение влево и вправо (по умолчанию стрелки — "ui_left" и "ui_right")
         double direction = input->get_axis("move_left", "move_right");
-        if (direction != 0.0) {
-            velocity.x = direction * speed;
+
+        if (is_on_floor()) {
+        // НА ЗЕМЛЕ: мгновенный разгон и резкая остановка
+            if (direction != 0.0) {
+                velocity.x = direction * speed;
+            } else {
+                velocity.x = Math::move_toward((double)velocity.x, 0.0, speed);
+            }
         } else {
-            velocity.x = Math::move_toward((double)velocity.x, 0.0, speed);
-        }
+        // В ВОЗДУХЕ: сохраняем инерцию и плавно меняем скорость
+        if (direction != 0.0) {
+        // Не обрезаем скорость, если игрок вылетел с крюка быстрее обычного бега!
+        double target_speed = direction * speed;
+        velocity.x = Math::move_toward((double)velocity.x, target_speed, air_acceleration * delta);
+    } else {
+        // Если кнопки отпущены, персонаж продолжает лететь по инерции, почти не теряя скорость
+        velocity.x = Math::move_toward((double)velocity.x, 0.0, air_drag * delta);
+    }
+    }
+
     }
 
         // 1. Поворачиваем зону подбора GrabArea в сторону взгляда по горизонтали
@@ -176,44 +253,51 @@ void Player::_physics_process(double delta) {
        drop_through_timer = 0.15; // На 0.15 секунды отключаем опору на коробки
     }
 
-        bool can_stand_on_box = false;
+    TypedArray<Node> all_boxes = get_tree()->get_nodes_in_group("boxes");
+    double player_bottom = get_global_position().y + (player_size.y / 2.0);
+    PhysicsDirectSpaceState2D *space_state = get_world_2d()->get_direct_space_state();
 
-    if (velocity.y >= 0.0 && drop_through_timer <= 0.0 && body_check_area != nullptr) {
-        double player_bottom = get_global_position().y + (player_size.y / 2.0);
-        TypedArray<Node2D> overlapping = body_check_area->get_overlapping_bodies();
-        PhysicsDirectSpaceState2D *space_state = get_world_2d()->get_direct_space_state();
+    for (int i = 0; i < all_boxes.size(); i++) {
+    Carryable *box = Object::cast_to<Carryable>(all_boxes[i]);
+    if (box == nullptr) continue;
 
-        for (int i = 0; i < overlapping.size(); i++) {
-            Carryable *box = Object::cast_to<Carryable>(overlapping[i]);
-            if (box != nullptr && !box->get_is_carried()) {
-                double box_top = box->get_global_position().y - (box->get_carry_size().y / 2.0);
-                double tolerance = 8.0 + (velocity.y * delta);
+    // По умолчанию игрок проходит сквозь любую коробку
+    if (box->get_is_carried()) {
+        add_collision_exception_with(box);
+        continue;
+    }
 
-                if (player_bottom <= box_top + tolerance) {
-                    // Проверяем, хватит ли места от крышки коробки вверх до потолка для всего роста игрока!
-                    Vector2 check_start = Vector2(get_global_position().x, box_top - 2.0);
-                    Vector2 check_end = Vector2(get_global_position().x, box_top - player_size.y);
+    double box_top = box->get_global_position().y - (box->get_carry_size().y / 2.0);
+    double tolerance = 8.0 + (velocity.y * delta);
+    bool can_stand = false;
 
-                    Ref<PhysicsRayQueryParameters2D> ceiling_query = PhysicsRayQueryParameters2D::create(
-                        check_start,
-                        check_end,
-                        1 // Проверяем только 1-й слой (стены и потолок)
-                    );
+    // Разрешаем встать на коробку, только если мы падаем/стоим, не нажали S и наши пятки выше её крышки
+    if (velocity.y >= 0.0 && drop_through_timer <= 0.0 && player_bottom <= box_top + tolerance) {
+        Ref<RectangleShape2D> check_shape;
+        check_shape.instantiate();
+        check_shape->set_size(Vector2(player_size.x - 4.0, player_size.y - 4.0));
 
-                    Dictionary ceiling_hit = space_state->intersect_ray(ceiling_query);
-                    
-                    // Разрешаем встать на коробку ТОЛЬКО если луч не уперся в низкий потолок!
-                    if (ceiling_hit.is_empty()) {
-                        can_stand_on_box = true;
-                        break;
-                    }
-                }
-            }
+        Ref<PhysicsShapeQueryParameters2D> shape_query;
+        shape_query.instantiate();
+        shape_query->set_shape(check_shape);
+        shape_query->set_collision_mask(1);
+        shape_query->set_transform(Transform2D(
+            0.0,
+            Vector2(get_global_position().x, box_top - (player_size.y / 2.0) - 2.0)
+        ));
+
+        TypedArray<Dictionary> hits = space_state->intersect_shape(shape_query, 1);
+        if (hits.is_empty()) {
+            can_stand = true;
         }
     }
 
-    set_collision_mask_value(3, can_stand_on_box);
-
+    if (can_stand) {
+        remove_collision_exception_with(box);
+    } else {
+        add_collision_exception_with(box);
+    }
+    }
 
     set_velocity(velocity);
     move_and_slide();
@@ -285,4 +369,57 @@ void Player::drop_box() {
     held_box->set_global_position(target_pos);
     held_box->drop(Vector2(0.0, 0.0));
     held_box = nullptr;
+}
+
+void Player::try_attach_hook() {
+    TypedArray<Node> hooks = get_tree()->get_nodes_in_group("hook_points");
+    HookPoint *best_hook = nullptr;
+    double best_dist = 1e9;
+
+    Vector2 my_pos = get_global_position();
+    PhysicsDirectSpaceState2D *space_state = get_world_2d()->get_direct_space_state();
+
+    for (int i = 0; i < hooks.size(); i++) {
+        HookPoint *hp = Object::cast_to<HookPoint>(hooks[i]);
+        if (hp == nullptr) continue;
+
+        double dist = my_pos.distance_to(hp->get_global_position());
+        // Проверяем, что мы внутри радиуса этой точки и она ближе предыдущих
+        if (dist <= hp->get_hook_radius() && dist < best_dist) {
+            // Проверяем лучом, нет ли стены (1-й слой) между игроком и точкой крюка
+            Ref<PhysicsRayQueryParameters2D> query = PhysicsRayQueryParameters2D::create(
+                my_pos,
+                hp->get_global_position(),
+                1
+            );
+            Dictionary hit = space_state->intersect_ray(query);
+            if (hit.is_empty()) {
+                best_dist = dist;
+                best_hook = hp;
+            }
+        }
+    }
+
+    if (best_hook != nullptr) {
+        active_hook = best_hook;
+        rope_length = best_dist;
+        can_dash = true; // Бонус: зацеп крюком восстанавливает рывок в воздухе!
+        if (rope_line != nullptr) {
+            rope_line->set_visible(true);
+        }
+    }
+}
+
+void Player::release_hook() {
+    active_hook = nullptr;
+    if (rope_line != nullptr) {
+        rope_line->set_visible(false);
+        rope_line->clear_points();
+    }
+    // Небольшой подброс вверх при отпускании крюка для приятного паркура
+    Vector2 v = get_velocity();
+    if (v.y > -200.0) {
+        v.y -= 150.0;
+        set_velocity(v);
+    }
 }
