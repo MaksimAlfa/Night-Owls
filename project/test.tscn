@@ -104,6 +104,7 @@ next_scene_path = "uid://cfvp3om3vjjx6"
 position = Vector2(1882, 995)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="LevelExit" unique_id=1563138019]
+position = Vector2(117, 1)
 shape = SubResource("RectangleShape2D_c8bmw")
 
 [node name="ColorRect" type="ColorRect" parent="LevelExit/CollisionShape2D" unique_id=1365312682]

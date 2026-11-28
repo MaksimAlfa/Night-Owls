@@ -23,6 +23,9 @@ size = Vector2(116.5, 96.5)
 
 [sub_resource type="ImageTexture" id="ImageTexture_cove1"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_cove1"]
+size = Vector2(30, 124)
+
 [node name="Level1" type="Node2D" unique_id=537222864]
 
 [node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=2076137391]
@@ -353,3 +356,16 @@ offset_bottom = 89.0
 scale = Vector2(2.9064863, -2.431362)
 texture = SubResource("ImageTexture_cove1")
 metadata/_edit_use_anchors_ = true
+
+[node name="LevelExit" parent="." unique_id=321253796]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="LevelExit" unique_id=559413459]
+position = Vector2(9959, 307)
+shape = SubResource("RectangleShape2D_cove1")
+
+[node name="ColorRect" type="ColorRect" parent="LevelExit/CollisionShape2D" unique_id=263995365]
+offset_left = -17.0
+offset_top = -62.0
+offset_right = 15.0
+offset_bottom = 63.0
+color = Color(0.91803324, 0.80128264, 3.85046e-07, 1)
